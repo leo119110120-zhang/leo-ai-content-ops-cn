@@ -1,8 +1,14 @@
 from pathlib import Path
 
 from content_ops.config import load_yaml, save_yaml
-from content_ops.prompts import CANDIDATE_SYSTEM, require_fields
-from content_ops.scoring import score_topic
+from content_ops.contracts import (
+    require_exact_fields,
+    require_mapping,
+    require_nonempty_string,
+    require_string_list,
+)
+from content_ops.prompts import CANDIDATE_SYSTEM
+from content_ops.scoring import LIMITS, score_topic
 
 
 REQUIRED = {
@@ -17,6 +23,34 @@ REQUIRED = {
     "source_ids",
     "scores",
 }
+STRING_FIELDS = {
+    "id",
+    "title",
+    "category",
+    "trigger",
+    "audience",
+    "differentiation",
+}
+
+
+def validate_candidate(candidate, label: str) -> dict:
+    candidate = require_mapping(candidate, label)
+    require_exact_fields(candidate, REQUIRED, label)
+    for field in STRING_FIELDS:
+        require_nonempty_string(candidate[field], f"{label}.{field}")
+    require_string_list(
+        candidate["demand_evidence"],
+        f"{label}.demand_evidence",
+        allow_empty=True,
+    )
+    require_string_list(
+        candidate["risks"],
+        f"{label}.risks",
+        allow_empty=True,
+    )
+    require_string_list(candidate["source_ids"], f"{label}.source_ids")
+    require_exact_fields(candidate["scores"], set(LIMITS), f"{label}.scores")
+    return candidate
 
 
 def generate_candidate_batch(
@@ -30,13 +64,23 @@ def generate_candidate_batch(
         payload={"run_date": run_date, "sources": sources, "limit": 3},
         thinking=True,
     )
+    response = require_mapping(result.data, "candidate_response")
+    require_exact_fields(response, {"candidates"}, "candidate_response")
     valid_source_ids = {source["id"] for source in sources}
     candidates: list[dict] = []
     score_errors: list[ValueError] = []
     valid_score_count = 0
-    model_candidates = result.data.get("candidates", [])
-    for item in model_candidates:
-        require_fields(item, REQUIRED, "candidate")
+    model_candidates = response["candidates"]
+    if not isinstance(model_candidates, list):
+        raise ValueError("candidate_response.candidates must be a list")
+    seen_ids: set[str] = set()
+    for index, raw_item in enumerate(model_candidates):
+        item = validate_candidate(raw_item, f"candidate[{index}]")
+        if item["id"] in seen_ids:
+            raise ValueError("candidate ids must be unique")
+        seen_ids.add(item["id"])
+        if not item["demand_evidence"]:
+            continue
         source_ids = item["source_ids"]
         if not source_ids or not set(source_ids).issubset(valid_source_ids):
             continue

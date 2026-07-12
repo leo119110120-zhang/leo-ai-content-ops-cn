@@ -43,6 +43,61 @@ class CandidateServerTests(unittest.TestCase):
             self.assertIn("评论重复询问", html)
             self.assertIn("83", html)
             self.assertIn('data-candidate-id="a"', html)
+            self.assertIn(
+                "<ul><li>评论重复询问</li><li>问题具体可执行</li></ul>",
+                html,
+            )
+
+    def test_page_uses_accessible_event_listeners_without_inline_js(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            batch = root / "batch.yaml"
+            save_yaml(batch, batch_data())
+
+            page = render_candidates(batch, root / "candidates.html")
+            html = page.read_text(encoding="utf-8")
+
+            self.assertNotIn("onclick=", html)
+            self.assertIn('role="status"', html)
+            self.assertIn('aria-live="polite"', html)
+            self.assertIn("addEventListener('click'", html)
+            self.assertIn("finally", html)
+
+    def test_invalid_batch_shows_explanatory_empty_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            batch = root / "batch.yaml"
+            data = batch_data()
+            data.update(
+                {
+                    "status": "invalid_schema",
+                    "candidates": [],
+                    "invalid_reason": "模型返回的数据结构不符合要求，已阻止选择。",
+                }
+            )
+            save_yaml(batch, data)
+
+            page = render_candidates(batch, root / "candidates.html")
+            html = page.read_text(encoding="utf-8")
+
+            self.assertIn("本批候选已停止使用", html)
+            self.assertIn("模型返回的数据结构不符合要求", html)
+            self.assertNotIn("选择这个并开始生成", html)
+
+    def test_risks_render_as_complete_items_without_double_punctuation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            batch = root / "batch.yaml"
+            data = batch_data()
+            data["candidates"][0]["risks"] = ["第一项边界。", "第二项边界。"]
+            save_yaml(batch, data)
+
+            page = render_candidates(batch, root / "candidates.html")
+            html = page.read_text(encoding="utf-8")
+
+            self.assertNotIn("。；", html)
+            self.assertIn("<li>第一项边界。</li>", html)
+            self.assertIn("<li>第二项边界。</li>", html)
 
     def test_select_post_is_idempotent_and_calls_callback_once(self):
         with tempfile.TemporaryDirectory() as tmp:

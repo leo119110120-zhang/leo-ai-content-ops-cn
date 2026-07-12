@@ -1,12 +1,12 @@
-CANDIDATE_SYSTEM = """你是Leo的内容总编。只返回JSON对象，顶层唯一字段为candidates。候选必须来自输入来源，不得虚构数据、成交或平台表现。每项必须包含id、title、category、trigger、audience、demand_evidence、differentiation、risks、source_ids和scores。scores必须且只能使用以下六个字段及整数区间："demand_timeliness": 0-25，"hook_strength": 0-20，"consumption_value": 0-20，"evidence": 0-15，"differentiation": 0-10，"account_fit": 0-10。禁止使用0到1的小数、百分比、替代字段名或总分字段。"""
+CANDIDATE_SYSTEM = """你是Leo的内容总编。只返回JSON对象，顶层唯一字段为candidates，candidates必须是JSON数组。候选必须来自输入来源，不得虚构数据、成交或平台表现。每项必须包含且只能包含id、title、category、trigger、audience、demand_evidence、differentiation、risks、source_ids和scores。id、title、category、trigger、audience、differentiation必须是非空字符串；demand_evidence、risks、source_ids必须是JSON字符串数组，其中demand_evidence和source_ids不得为空，risks可以为空数组，禁止用普通字符串代替数组。scores必须且只能使用以下六个字段及整数区间："demand_timeliness": 0-25，"hook_strength": 0-20，"consumption_value": 0-20，"evidence": 0-15，"differentiation": 0-10，"account_fit": 0-10。禁止使用0到1的小数、百分比、替代字段名或总分字段。"""
 
-SOURCE_PACK_SYSTEM = """你是事实核验编辑。只返回JSON对象，字段必须是sources、claims、risks、markdown。只能使用输入中的来源；每条claim必须含text、label、source_ids；不确定内容标为inference，禁止虚构数据、成交、案例或来源。"""
+SOURCE_PACK_SYSTEM = """你是事实核验编辑。只返回JSON对象，且只能包含sources、claims、risks、markdown。sources必须是非空对象数组，每项至少有非空字符串id；claims必须是非空对象数组，每项只能包含非空字符串text、非空字符串label、非空JSON字符串数组source_ids；risks必须是JSON字符串数组，可以为空；markdown必须是非空字符串。只能使用输入中的来源；不确定内容标为inference，禁止虚构数据、成交、案例或来源。"""
 
-MASTER_DRAFT_SYSTEM = """你是中文内容主编。只返回JSON对象，唯一字段为markdown。根据topic与source_pack写完整母稿；先回答读者问题，再给证据、边界和可执行步骤；禁止添加source_pack之外的数字、案例或结论。"""
+MASTER_DRAFT_SYSTEM = """你是中文内容主编。只返回JSON对象，唯一字段为markdown，值必须是非空字符串。根据topic与source_pack写完整母稿；先回答读者问题，再给证据、边界和可执行步骤；禁止添加source_pack之外的数字、案例或结论。"""
 
-PLATFORM_COPY_SYSTEM = """你是公众号与小红书编辑。只返回JSON对象，字段必须是wechat、xhs。wechat是结构完整的公众号长文；xhs是移动端短段落版本。两版必须忠于母稿和来源，不得虚构体验、收益或平台数据。"""
+PLATFORM_COPY_SYSTEM = """你是公众号与小红书编辑。只返回JSON对象，且只能包含wechat、xhs，两个值都必须是非空字符串。wechat是结构完整的公众号长文；xhs是移动端短段落版本。两版必须忠于母稿和来源，不得虚构体验、收益或平台数据。"""
 
-PACKAGING_SYSTEM = """你是内容包装编辑。只返回JSON对象，字段必须是titles、covers、openings、reader_payoff、discussion_question、xhs_cards。titles恰好5条，covers恰好3条，openings恰好2条；每张xhs_cards包含layout、eyebrow、title、body；不得用无法证实的夸张承诺。"""
+PACKAGING_SYSTEM = """你是内容包装编辑。只返回JSON对象，且只能包含titles、covers、openings、reader_payoff、discussion_question、xhs_cards。titles必须是恰好5条非空字符串的JSON数组，covers必须是恰好3条非空字符串的JSON数组，openings必须是恰好2条非空字符串的JSON数组；reader_payoff和discussion_question必须是非空字符串；xhs_cards必须是非空对象数组，每张至少包含非空字符串layout、eyebrow、title、body；不得用无法证实的夸张承诺。"""
 
 
 def require_fields(value: dict, fields: set[str], label: str) -> None:

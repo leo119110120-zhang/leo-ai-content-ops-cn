@@ -8,10 +8,10 @@
     :root{--blue:#2457E6;--paper:#F6F2E9;--orange:#FF8A34;--ink:#20242C;--muted:#667085}
     *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 system-ui,"Microsoft YaHei",sans-serif}
     header{padding:34px 6vw;background:linear-gradient(125deg,#171B24,#29334C);color:white}header p{max-width:760px;color:#d5dbeb}
-    main{max-width:1120px;margin:auto;padding:34px 5vw}.list{display:grid;gap:22px}.card{background:white;border-radius:20px;padding:26px;box-shadow:0 12px 34px #20242c12;border:1px solid #fff}
-    .top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.score{min-width:112px;border-radius:18px;background:#edf2ff;color:var(--blue);padding:12px;text-align:center}.score strong{display:block;font-size:34px;line-height:1}
-    .label{display:inline-block;border-radius:999px;background:#fff0e6;color:#a74600;padding:3px 10px;font-size:13px}.evidence{background:#f7f8fa;border-radius:14px;padding:14px 18px}.risk{color:#8a4b08}
-    button{border:0;border-radius:12px;padding:13px 20px;background:var(--blue);color:white;font-weight:700;cursor:pointer}button:disabled{background:#aab2c0;cursor:not-allowed}
+    main{max-width:1120px;margin:auto;padding:34px 5vw}.list{display:grid;gap:22px}.card{min-width:0;background:white;border-radius:20px;padding:26px;box-shadow:0 12px 34px #20242c12;border:1px solid #fff}
+    .top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.top>div:first-child{min-width:0}.top h2{overflow-wrap:anywhere}.score{flex:0 0 112px;border-radius:18px;background:#edf2ff;color:var(--blue);padding:12px;text-align:center}.score strong{display:block;font-size:34px;line-height:1}
+    .label{display:inline-block;border-radius:999px;background:#fff0e6;color:#a74600;padding:3px 10px;font-size:13px}.evidence{background:#f7f8fa;border-radius:14px;padding:14px 18px}.evidence ul{margin-bottom:0;padding-left:24px}.evidence li{padding-left:3px;overflow-wrap:anywhere}.risk{color:#8a4b08;overflow-wrap:anywhere}.risk strong{color:#6f3b05}.risk ul{margin:4px 0 18px;padding-left:24px}.empty h2{margin-top:0}
+    button{border:0;border-radius:12px;padding:13px 20px;background:var(--blue);color:white;font-weight:700;cursor:pointer}button:disabled{background:#aab2c0;cursor:not-allowed}button:focus-visible{outline:3px solid var(--orange);outline-offset:3px}
     #status{position:fixed;right:22px;bottom:22px;max-width:360px;background:var(--ink);color:white;padding:14px 18px;border-radius:12px;display:none}
     @media(max-width:700px){.top{display:block}.score{margin-top:16px;width:112px}.card{padding:20px}}
   </style>
@@ -20,27 +20,48 @@
   <header>
     <small>{{ run_date }} · {{ status }}</small>
     <h1>今天值得做的内容</h1>
-    <p>候选已通过需求、证据和账号匹配门槛。选择一个后，系统会自动生成公众号与小红书版本，最后仍由你审核。</p>
+    {% if status == 'awaiting_topic_selection' %}<p>候选已通过需求、证据和账号匹配门槛。选择一个后，系统会自动生成公众号与小红书版本，最后仍由你审核。</p>{% else %}<p>当前没有可选择的候选，系统不会继续生成正文。</p>{% endif %}
   </header>
   <main><section class="list">
+    {% if candidates %}
     {% for item in candidates %}
     <article class="card">
       <div class="top"><div><span class="label">{{ item.category }}</span><h2>{{ item.title }}</h2><p>{{ item.trigger }}</p></div><div class="score"><strong>{{ item.scores.total }}</strong>总分</div></div>
       <p><strong>目标读者：</strong>{{ item.audience }}　<strong>需求与当下性：</strong>{{ item.scores.demand_timeliness }}</p>
       <div class="evidence"><strong>为什么有人会看</strong><ul>{% for evidence in item.demand_evidence %}<li>{{ evidence }}</li>{% endfor %}</ul></div>
       <p><strong>差异化：</strong>{{ item.differentiation }}</p>
-      {% if item.risks %}<p class="risk"><strong>边界：</strong>{{ item.risks|join('；') }}</p>{% endif %}
-      <button data-candidate-id="{{ item.id }}" onclick="choose('{{ item.id }}')" {% if status != 'awaiting_topic_selection' %}disabled{% endif %}>选择这个并开始生成</button>
+      {% if item.risks %}<div class="risk"><strong>边界：</strong><ul>{% for risk in item.risks %}<li>{{ risk }}</li>{% endfor %}</ul></div>{% endif %}
+      <button type="button" data-candidate-id="{{ item.id }}" {% if status != 'awaiting_topic_selection' %}disabled{% endif %}>选择这个并开始生成</button>
     </article>
     {% endfor %}
+    {% else %}
+    <article class="card empty">
+      <h2>本批候选已停止使用</h2>
+      <p>{{ invalid_reason|default('没有符合需求、证据和账号匹配门槛的候选，请补充真实需求来源后重新生成。') }}</p>
+    </article>
+    {% endif %}
   </section></main>
-  <div id="status"></div>
+  <div id="status" role="status" aria-live="polite"></div>
   <script>
-    async function choose(id){
-      const box=document.getElementById('status');box.style.display='block';box.textContent='正在提交选题…';
-      const response=await fetch('/api/candidate-action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'select',candidate_id:id})});
-      const data=await response.json();box.textContent=data.message;if(response.ok)setTimeout(()=>location.reload(),900);
+    const buttons=[...document.querySelectorAll('[data-candidate-id]')];
+    const box=document.getElementById('status');
+    async function choose(button){
+      let reloadScheduled=false;
+      buttons.forEach(item=>item.disabled=true);
+      box.style.display='block';box.textContent='正在提交选题…';
+      try{
+        const response=await fetch('/api/candidate-action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'select',candidate_id:button.dataset.candidateId})});
+        let data={};
+        try{data=await response.json();}catch(error){data={message:'服务器返回了无法识别的响应'};}
+        if(!response.ok)throw new Error(data.message||'候选提交失败');
+        box.textContent=data.message;reloadScheduled=true;setTimeout(()=>location.reload(),900);
+      }catch(error){
+        box.textContent=`提交失败：${error.message||'请检查本地服务后重试'}`;
+      }finally{
+        if(!reloadScheduled)buttons.forEach(item=>item.disabled=false);
+      }
     }
+    buttons.forEach(button=>button.addEventListener('click',()=>choose(button)));
   </script>
 </body>
 </html>
