@@ -10,6 +10,14 @@
 
 它不是“自动洗稿机”，也不会替你登录或发布平台。系统负责从资料发现需求、筛选选题、生成双平台稿件、制作确定性图卡并完成质量检查；最终选择和发布权始终在人手里。
 
+## 项目治理
+
+- [Codex 项目规则](AGENTS.md)
+- [长期决策记录](docs/DECISIONS.md)
+- [人工发布检查表](docs/content-release-checklist.md)
+- [内容运营使用手册](docs/content-ops-runbook.md)
+- 本地真实状态使用 `content-ops/state/project-state.yaml`，该文件被 Git 忽略；公开结构见 `content-ops/config/project-state.example.yaml`。
+
 ## 为什么做这个项目
 
 很多 AI 内容工具只解决“生成文字”，但真正落地还缺少四层约束：

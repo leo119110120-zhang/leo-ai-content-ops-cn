@@ -1,0 +1,27 @@
+schema_version: 1
+updated_at: null
+current_stage: not_initialized
+
+accounts:
+  wechat: unknown
+  xiaohongshu: unknown
+
+runtime:
+  deepseek_key_present: unknown
+  scheduler_installed: unknown
+  candidate_server: stopped
+  review_server: stopped
+
+workflow:
+  pending_candidate: null
+  pending_review: null
+  last_real_run: null
+  last_published_content: null
+
+verification:
+  last_tested_at: null
+  test_count: null
+  result: unknown
+
+known_blockers: []
+next_actions: []

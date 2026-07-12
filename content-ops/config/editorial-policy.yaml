@@ -1,10 +1,64 @@
+schema_version: 1
+
 cold_start_mix:
   adjacent_broad: 60
   trust: 30
   deep: 10
+
+selection:
+  minimum_total_score: 75
+  minimum_demand_timeliness: 15
+  maximum_candidates: 3
+  traceable_source_required: true
+  allow_no_publish_day: true
+
 topic_gate:
   total_minimum: 75
   demand_timeliness_minimum: 15
+
+evidence_ladder:
+  - exposure
+  - click_or_read
+  - save_or_share
+  - comment
+  - profile_visit
+  - follow
+  - inquiry
+  - quote_request
+  - deposit
+  - payment
+  - repeat_purchase
+  - referral
+
+demand_evidence_rules:
+  required_fields:
+    - user
+    - current_solution_path
+    - existing_solution
+    - unresolved_blocker
+    - accepted_delivery
+    - competitors
+    - reach_channel
+    - known
+    - unknown
+  comments_do_not_prove_payment: true
+  model_output_is_not_a_source: true
+  single_post_cannot_change_positioning: true
+  positioning_review_minimum_similar_posts: 5
+  positioning_review_minimum_weeks: 2
+
+human_gates:
+  - topic_selection
+  - final_review
+  - platform_publish
+
+automation:
+  automatic_login: false
+  automatic_publish: false
+  maximum_model_retries: 2
+  exit_when_no_new_sources: true
+  stop_after_revision_failures: 2
+
 packaging:
   title_candidates: 5
   cover_candidates: 3
@@ -16,3 +70,30 @@ forbidden_claims:
   - 保证爆款
   - 稳赚不赔
   - 零成本躺赚
+
+platform_rules:
+  shared_facts_not_shared_copy: true
+  title_promise_due_within_first_fraction: 0.3
+  xiaohongshu_single_problem: true
+  wechat_full_reasoning_and_evidence: true
+
+stop_conditions:
+  - missing_traceable_source
+  - invalid_model_schema
+  - unsupported_claim
+  - failed_quality_check
+  - missing_human_topic_selection
+  - missing_human_final_review
+
+public_private_boundary:
+  public:
+    - generic_rules
+    - example_state
+    - code_and_tests
+  private:
+    - api_keys
+    - account_status
+    - user_comments_and_messages
+    - generated_drafts
+    - local_runtime_state
+    - absolute_local_paths
