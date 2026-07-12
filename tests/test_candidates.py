@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from content_ops.candidates import CandidateBatchStore, generate_candidate_batch
+from content_ops.prompts import CANDIDATE_SYSTEM
 from content_ops.providers import ModelResult, ModelUsage
 
 
@@ -59,6 +60,46 @@ class FakeModel:
 
 
 class CandidateTests(unittest.TestCase):
+    def test_candidate_prompt_declares_exact_score_keys_and_ranges(self):
+        expected = {
+            "demand_timeliness": 25,
+            "hook_strength": 20,
+            "consumption_value": 20,
+            "evidence": 15,
+            "differentiation": 10,
+            "account_fit": 10,
+        }
+        for key, maximum in expected.items():
+            self.assertIn(f'"{key}": 0-{maximum}', CANDIDATE_SYSTEM)
+        self.assertIn("禁止使用0到1的小数", CANDIDATE_SYSTEM)
+
+    def test_alternative_float_score_schema_fails_clearly(self):
+        class FloatScoreModel:
+            def complete_json(self, **kwargs):
+                item = candidate(
+                    "invalid-scores",
+                    scores={
+                        "demand": 0.9,
+                        "feasibility": 0.8,
+                        "uniqueness": 0.7,
+                        "scalability": 0.6,
+                        "timeliness": 0.5,
+                        "risk_mitigation": 0.4,
+                    },
+                )
+                return ModelResult(
+                    {"candidates": [item]},
+                    ModelUsage(10, 5),
+                    "fake",
+                )
+
+        with self.assertRaisesRegex(ValueError, "valid score schema"):
+            generate_candidate_batch(
+                "2026-07-13",
+                [{"id": "s1", "content": "真实来源"}],
+                FloatScoreModel(),
+            )
+
     def test_ineligible_items_are_not_used_to_fill_three_slots(self):
         sources = [{"id": "s1", "content": "真实来源"}]
         batch = generate_candidate_batch("2026-07-13", sources, FakeModel())

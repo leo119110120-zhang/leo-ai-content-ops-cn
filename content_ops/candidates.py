@@ -32,18 +32,30 @@ def generate_candidate_batch(
     )
     valid_source_ids = {source["id"] for source in sources}
     candidates: list[dict] = []
-    for item in result.data.get("candidates", []):
+    score_errors: list[ValueError] = []
+    valid_score_count = 0
+    model_candidates = result.data.get("candidates", [])
+    for item in model_candidates:
         require_fields(item, REQUIRED, "candidate")
         source_ids = item["source_ids"]
         if not source_ids or not set(source_ids).issubset(valid_source_ids):
             continue
-        score = score_topic(item)
+        try:
+            score = score_topic(item)
+        except ValueError as error:
+            score_errors.append(error)
+            continue
+        valid_score_count += 1
         if not score.eligible:
             continue
         item["scores"] = {**item["scores"], "total": score.total}
         candidates.append(item)
         if len(candidates) == 3:
             break
+    if model_candidates and score_errors and valid_score_count == 0:
+        raise ValueError(
+            "candidate response contains no valid score schema"
+        ) from score_errors[0]
     return {
         "run_date": run_date,
         "status": (

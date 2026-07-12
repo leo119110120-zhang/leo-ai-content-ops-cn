@@ -1,4 +1,4 @@
-CANDIDATE_SYSTEM = """你是Leo的内容总编。只返回JSON对象。候选必须来自输入来源，不得虚构数据、成交或平台表现。每项包含id、title、category、trigger、audience、demand_evidence、differentiation、risks、source_ids和六维scores。"""
+CANDIDATE_SYSTEM = """你是Leo的内容总编。只返回JSON对象，顶层唯一字段为candidates。候选必须来自输入来源，不得虚构数据、成交或平台表现。每项必须包含id、title、category、trigger、audience、demand_evidence、differentiation、risks、source_ids和scores。scores必须且只能使用以下六个字段及整数区间："demand_timeliness": 0-25，"hook_strength": 0-20，"consumption_value": 0-20，"evidence": 0-15，"differentiation": 0-10，"account_fit": 0-10。禁止使用0到1的小数、百分比、替代字段名或总分字段。"""
 
 SOURCE_PACK_SYSTEM = """你是事实核验编辑。只返回JSON对象，字段必须是sources、claims、risks、markdown。只能使用输入中的来源；每条claim必须含text、label、source_ids；不确定内容标为inference，禁止虚构数据、成交、案例或来源。"""
 
