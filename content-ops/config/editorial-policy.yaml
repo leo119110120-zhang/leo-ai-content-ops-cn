@@ -1,0 +1,18 @@
+cold_start_mix:
+  adjacent_broad: 60
+  trust: 30
+  deep: 10
+topic_gate:
+  total_minimum: 75
+  demand_timeliness_minimum: 15
+packaging:
+  title_candidates: 5
+  cover_candidates: 3
+  opening_candidates: 2
+  reader_payoff: 1
+  discussion_question: 1
+forbidden_claims:
+  - 轻松暴富
+  - 保证爆款
+  - 稳赚不赔
+  - 零成本躺赚

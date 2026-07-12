@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leo-ai-content-ops-cn"
+version = "0.1.0"
+description = "Local-first AI content operations for WeChat and Xiaohongshu"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Leo"}]
+dependencies = [
+  "Jinja2>=3.1,<4",
+  "Markdown>=3.6,<4",
+  "Pillow>=10,<13",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+windows = ["winotify==1.1.0"]
+
+[project.scripts]
+leo-content-ops = "content_ops.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["content_ops*"]
+
+[tool.setuptools.package-data]
+content_ops = ["templates/*.j2"]

@@ -1,0 +1,17 @@
+timezone: Asia/Shanghai
+schedule:
+  weekdays: [Monday, Tuesday, Wednesday, Thursday, Friday]
+  time: "10:30"
+deepseek:
+  model: deepseek-v4-flash
+  base_url: https://api.deepseek.com
+  timeout_seconds: 90
+  max_retries: 2
+candidate_limit: 3
+source_limits:
+  max_items: 60
+  max_chars_per_item: 12000
+runtime:
+  state_dir: content-ops/state
+  candidates_dir: content-ops/candidates
+  logs_dir: content-ops/logs

@@ -1,0 +1,123 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+from content_ops.candidates import CandidateBatchStore, generate_candidate_batch
+from content_ops.providers import ModelResult, ModelUsage
+
+
+def candidate(candidate_id: str, **overrides) -> dict:
+    value = {
+        "id": candidate_id,
+        "title": "评论很多为什么仍不能证明有人付款",
+        "category": "adjacent_broad",
+        "trigger": "评论区集中求资料",
+        "audience": "AI内容创作者",
+        "demand_evidence": ["同一问题反复出现"],
+        "differentiation": "区分互动和付款",
+        "risks": ["不能虚构成交"],
+        "source_ids": ["s1"],
+        "scores": {
+            "demand_timeliness": 21,
+            "hook_strength": 17,
+            "consumption_value": 17,
+            "evidence": 12,
+            "differentiation": 8,
+            "account_fit": 8,
+        },
+    }
+    value.update(overrides)
+    return value
+
+
+class FakeModel:
+    def complete_json(self, **kwargs):
+        return ModelResult(
+            {
+                "candidates": [
+                    candidate("eligible"),
+                    candidate(
+                        "creator-only",
+                        title="我想聊的AI趋势",
+                        trigger="作者想写",
+                        demand_evidence=[],
+                        differentiation="无",
+                        scores={
+                            "demand_timeliness": 12,
+                            "hook_strength": 20,
+                            "consumption_value": 20,
+                            "evidence": 15,
+                            "differentiation": 10,
+                            "account_fit": 10,
+                        },
+                    ),
+                ]
+            },
+            ModelUsage(100, 40),
+            "fake",
+        )
+
+
+class CandidateTests(unittest.TestCase):
+    def test_ineligible_items_are_not_used_to_fill_three_slots(self):
+        sources = [{"id": "s1", "content": "真实来源"}]
+        batch = generate_candidate_batch("2026-07-13", sources, FakeModel())
+        self.assertEqual(
+            [item["id"] for item in batch["candidates"]], ["eligible"]
+        )
+        self.assertEqual(batch["status"], "awaiting_topic_selection")
+        self.assertEqual(batch["sources"], sources)
+
+    def test_candidate_referencing_unknown_source_is_filtered(self):
+        class UnknownSourceModel:
+            def complete_json(self, **kwargs):
+                return ModelResult(
+                    {
+                        "candidates": [
+                            candidate("invented", source_ids=["missing"])
+                        ]
+                    },
+                    ModelUsage(10, 5),
+                    "fake",
+                )
+
+        batch = generate_candidate_batch(
+            "2026-07-13",
+            [{"id": "s1", "content": "真实来源"}],
+            UnknownSourceModel(),
+        )
+        self.assertEqual(batch["status"], "no_candidates")
+        self.assertEqual(batch["candidates"], [])
+
+    def test_selection_is_idempotent_and_rejects_second_candidate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "batch.yaml"
+            store = CandidateBatchStore(path)
+            store.create(
+                {
+                    "run_date": "2026-07-13",
+                    "status": "awaiting_topic_selection",
+                    "candidates": [{"id": "a"}, {"id": "b"}],
+                }
+            )
+            first = store.select("a")
+            second = store.select("a")
+            self.assertEqual(first, second)
+            with self.assertRaisesRegex(ValueError, "already selected"):
+                store.select("b")
+
+    def test_at_most_three_eligible_candidates_are_kept(self):
+        class FourCandidateModel:
+            def complete_json(self, **kwargs):
+                return ModelResult(
+                    {"candidates": [candidate(str(index)) for index in range(4)]},
+                    ModelUsage(100, 40),
+                    "fake",
+                )
+
+        batch = generate_candidate_batch(
+            "2026-07-13",
+            [{"id": "s1", "content": "真实来源"}],
+            FourCandidateModel(),
+        )
+        self.assertEqual(len(batch["candidates"]), 3)

@@ -1,0 +1,13 @@
+raw_mode: read_only
+require_retrieved_at_for_web: true
+claim_labels:
+  - verified
+  - inference
+  - opinion
+current_topics:
+  - product_capability
+  - platform_rule
+  - price
+  - law
+  - policy
+  - market_data

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments and editors
+.venv/
+venv/
+.idea/
+.vscode/
+
+# Runtime output
+content-ops/state/*
+!content-ops/state/.gitkeep
+content-ops/logs/
+content-ops/candidates/
+content-ops/drafts/
+content-ops/ready-to-publish/
+
+# Real local inputs stay private
+wiki/*
+!wiki/.gitkeep
+raw/*
+!raw/inbox/
+raw/inbox/*
+!raw/inbox/.gitkeep
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
