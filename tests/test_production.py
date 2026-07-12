@@ -146,3 +146,67 @@ class ProductionTests(unittest.TestCase):
                     TEST_BRAND,
                 )
             self.assertFalse((root / "content-ops" / "drafts").exists())
+
+    def test_source_pack_rejects_string_risks_before_task_creation(self):
+        class StringRisksModel(FakeProductionModel):
+            def complete_json(self, *, stage, **kwargs):
+                result = super().complete_json(stage=stage, **kwargs)
+                if stage == "source_pack":
+                    result.data["risks"] = "不得虚构付款"
+                return result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with self.assertRaisesRegex(
+                ValueError,
+                "source_pack.risks must be a list of strings",
+            ):
+                produce_selected_candidate(
+                    root / "content-ops",
+                    selected_batch(root),
+                    StringRisksModel(),
+                    TEST_BRAND,
+                )
+            self.assertFalse((root / "content-ops" / "drafts").exists())
+
+    def test_platform_copy_rejects_blank_wechat_text(self):
+        class BlankWechatModel(FakeProductionModel):
+            def complete_json(self, *, stage, **kwargs):
+                result = super().complete_json(stage=stage, **kwargs)
+                if stage == "platform_copy":
+                    result.data["wechat"] = "  "
+                return result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with self.assertRaisesRegex(
+                ValueError,
+                "platform_copy.wechat must be a non-empty string",
+            ):
+                produce_selected_candidate(
+                    root / "content-ops",
+                    selected_batch(root),
+                    BlankWechatModel(),
+                    TEST_BRAND,
+                )
+
+    def test_packaging_requires_exact_title_count(self):
+        class ShortTitlesModel(FakeProductionModel):
+            def complete_json(self, *, stage, **kwargs):
+                result = super().complete_json(stage=stage, **kwargs)
+                if stage == "packaging":
+                    result.data["titles"] = ["只有一个标题"]
+                return result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with self.assertRaisesRegex(
+                ValueError,
+                "packaging.titles must contain exactly 5 items",
+            ):
+                produce_selected_candidate(
+                    root / "content-ops",
+                    selected_batch(root),
+                    ShortTitlesModel(),
+                    TEST_BRAND,
+                )

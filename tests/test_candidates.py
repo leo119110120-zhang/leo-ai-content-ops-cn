@@ -59,6 +59,18 @@ class FakeModel:
         )
 
 
+class ResponseModel:
+    def __init__(self, data):
+        self.data = data
+
+    def complete_json(self, **kwargs):
+        return ModelResult(
+            self.data,
+            ModelUsage(10, 5),
+            "fake",
+        )
+
+
 class CandidateTests(unittest.TestCase):
     def test_candidate_prompt_declares_exact_score_keys_and_ranges(self):
         expected = {
@@ -72,6 +84,63 @@ class CandidateTests(unittest.TestCase):
         for key, maximum in expected.items():
             self.assertIn(f'"{key}": 0-{maximum}', CANDIDATE_SYSTEM)
         self.assertIn("禁止使用0到1的小数", CANDIDATE_SYSTEM)
+
+    def test_candidate_prompt_declares_list_field_types(self):
+        self.assertIn("demand_evidence、risks、source_ids必须是JSON字符串数组", CANDIDATE_SYSTEM)
+
+    def test_candidates_must_be_a_list(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "candidate_response.candidates must be a list",
+        ):
+            generate_candidate_batch(
+                "2026-07-13",
+                [{"id": "s1", "content": "真实来源"}],
+                ResponseModel({"candidates": "不是数组"}),
+            )
+
+    def test_candidate_evidence_string_fails_clearly(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            r"candidate\[0\]\.demand_evidence must be a list of strings",
+        ):
+            generate_candidate_batch(
+                "2026-07-13",
+                [{"id": "s1", "content": "真实来源"}],
+                ResponseModel(
+                    {
+                        "candidates": [
+                            candidate(
+                                "bad-evidence",
+                                demand_evidence="公开讨论中反复出现",
+                            )
+                        ]
+                    }
+                ),
+            )
+
+    def test_candidate_risks_string_fails_clearly(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            r"candidate\[0\]\.risks must be a list of strings",
+        ):
+            generate_candidate_batch(
+                "2026-07-13",
+                [{"id": "s1", "content": "真实来源"}],
+                ResponseModel(
+                    {"candidates": [candidate("bad-risks", risks="风险文本")]}
+                ),
+            )
+
+    def test_duplicate_candidate_ids_fail_clearly(self):
+        with self.assertRaisesRegex(ValueError, "candidate ids must be unique"):
+            generate_candidate_batch(
+                "2026-07-13",
+                [{"id": "s1", "content": "真实来源"}],
+                ResponseModel(
+                    {"candidates": [candidate("same"), candidate("same")]}
+                ),
+            )
 
     def test_alternative_float_score_schema_fails_clearly(self):
         class FloatScoreModel:
@@ -93,7 +162,10 @@ class CandidateTests(unittest.TestCase):
                     "fake",
                 )
 
-        with self.assertRaisesRegex(ValueError, "valid score schema"):
+        with self.assertRaisesRegex(
+            ValueError,
+            r"candidate\[0\]\.scores has invalid fields",
+        ):
             generate_candidate_batch(
                 "2026-07-13",
                 [{"id": "s1", "content": "真实来源"}],
